@@ -113,7 +113,7 @@ The timed, spoken presentation narration is available at [DEMO_SCRIPT.txt](DEMO_
    git add .
    git commit -m "Initial commit: home-sync ADK agent"
    git branch -M main
-   git remote add origin https://github.com/<your-username>/home-sync.git
+   git remote add origin https://github.com/nikhitha2812/Smart_Household_Concierge.git
    git push -u origin main
    ```
 
