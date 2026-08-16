@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+```
+<title>HomeSync AI</title>
+
+<style>
+    * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+        font-family: Arial, sans-serif;
+    }
+
+    body {
+        background: #f4f7fb;
+        height: 100vh;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+    }
+
+    .container {
+        width: 95%;
+        max-width: 850px;
+        height: 90vh;
+        background: white;
+        border-radius: 18px;
+        box-shadow: 0 10px 35px rgba(0, 0, 0, 0.12);
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+    }
+
+    .header {
+        background: #4f46e5;
+        color: white;
+        padding: 20px 25px;
+    }
+
+    .header h1 {
+        font-size: 24px;
+    }
+
+    .header p {
+        margin-top: 5px;
+        opacity: 0.9;
+        font-size: 14px;
+    }
+
+    .chat {
+        flex: 1;
+        padding: 25px;
+        overflow-y: auto;
+    }
+
+    .message {
+        margin-bottom: 18px;
+        display: flex;
+    }
+
+    .message.user {
+        justify-content: flex-end;
+    }
+
+    .bubble {
+        max-width: 75%;
+        padding: 13px 17px;
+        border-radius: 15px;
+        line-height: 1.5;
+        white-space: pre-wrap;
+    }
+
+    .user .bubble {
+        background: #4f46e5;
+        color: white;
+        border-bottom-right-radius: 4px;
+    }
+
+    .assistant .bubble {
+        background: #eef1f6;
+        color: #222;
+        border-bottom-left-radius: 4px;
+    }
+
+    .input-area {
+        padding: 15px;
+        border-top: 1px solid #ddd;
+        display: flex;
+        gap: 10px;
+    }
+
+    #messageInput {
+        flex: 1;
+        padding: 13px 15px;
+        border: 1px solid #ccc;
+        border-radius: 10px;
+        outline: none;
+        font-size: 15px;
+    }
+
+    #messageInput:focus {
+        border-color: #4f46e5;
+    }
+
+    #sendButton {
+        border: none;
+        background: #4f46e5;
+        color: white;
+        padding: 0 22px;
+        border-radius: 10px;
+        cursor: pointer;
+        font-size: 15px;
+    }
+
+    #sendButton:hover {
+        background: #4338ca;
+    }
+
+    #sendButton:disabled {
+        background: #999;
+        cursor: not-allowed;
+    }
+
+    .typing {
+        color: #777;
+        font-size: 13px;
+        margin-bottom: 10px;
+    }
+
+    @media (max-width: 600px) {
+        .container {
+            width: 100%;
+            height: 100vh;
+            border-radius: 0;
+        }
+
+        .bubble {
+            max-width: 85%;
+        }
+    }
+</style>
+```
+
+</head>
+
+<body>
+
+<div class="container">
+
+```
+<div class="header">
+    <h1>🏠 HomeSync AI</h1>
+    <p>Your intelligent household assistant</p>
+</div>
+
+<div id="chat" class="chat">
+
+    <div class="message assistant">
+        <div class="bubble">
+            Hello! 👋 I'm HomeSync AI.
+            How can I help you with your household today?
+        </div>
+    </div>
+
+</div>
+
+<div class="input-area">
+
+    <input
+        id="messageInput"
+        type="text"
+        placeholder="Ask HomeSync something..."
+        autocomplete="off"
+    />
+
+    <button id="sendButton">
+        Send
+    </button>
+
+</div>
+```
+
+</div>
+
+<script>
+
+    // Your Render backend
+    const API_URL = "https://home-sync-agent.onrender.com";
+
+    // Your ADK application name
+    const APP_NAME = "app";
+
+    // One user ID for this browser
+    let userId = localStorage.getItem("homesync_user_id");
+
+    if (!userId) {
+        userId = "user_" + crypto.randomUUID();
+        localStorage.setItem("homesync_user_id", userId);
+    }
+
+    // Keep the same session during this browser session
+    let sessionId = sessionStorage.getItem("homesync_session_id");
+
+    const chat = document.getElementById("chat");
+    const input = document.getElementById("messageInput");
+    const sendButton = document.getElementById("sendButton");
+
+
+    function addMessage(text, sender) {
+
+        const message = document.createElement("div");
+
+        message.className = "message " + sender;
+
+        const bubble = document.createElement("div");
+
+        bubble.className = "bubble";
+
+        bubble.textContent = text;
+
+        message.appendChild(bubble);
+
+        chat.appendChild(message);
+
+        chat.scrollTop = chat.scrollHeight;
+
+        return bubble;
+    }
+
+
+    async function createSession() {
+
+        const response = await fetch(
+            `${API_URL}/apps/${APP_NAME}/users/${userId}/sessions`,
+            {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({})
+            }
+        );
+
+        if (!response.ok) {
+            throw new Error("Could not create session");
+        }
+
+        const data = await response.json();
+
+        sessionId = data.id;
+
+        sessionStorage.setItem(
+            "homesync_session_id",
+            sessionId
+        );
+
+        return sessionId;
+    }
+
+
+    async function sendMessage() {
+
+        const message = input.value.trim();
+
+        if (!message) {
+            return;
+        }
+
+        addMessage(message, "user");
+
+        input.value = "";
+
+        sendButton.disabled = true;
+
+        const assistantBubble = addMessage(
+            "Thinking...",
+            "assistant"
+        );
+
+        try {
+
+            if (!sessionId) {
+                await createSession();
+            }
+
+            const response = await fetch(
+                `${API_URL}/run_sse`,
+                {
+                    method: "POST",
+
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+
+                    body: JSON.stringify({
+
+                        app_name: APP_NAME,
+
+                        user_id: userId,
+
+                        session_id: sessionId,
+
+                        new_message: {
+                            role: "user",
+                            parts: [
+                                {
+                                    text: message
+                                }
+                            ]
+                        },
+
+                        // false gives us the complete response
+                        // instead of token streaming
+                        streaming: false
+                    })
+                }
+            );
+
+
+            if (!response.ok) {
+
+                throw new Error(
+                    `Server error: ${response.status}`
+                );
+
+            }
+
+
+            const result = await response.text();
+
+            console.log("ADK response:", result);
+
+
+            /*
+             * ADK returns SSE events like:
+             *
+             * data: {"content":{"parts":[{"text":"Hello!"}]...}}
+             *
+             * Extract the final model text.
+             */
+
+            const lines = result.split("\n");
+
+            let finalText = "";
+
+            for (const line of lines) {
+
+                if (!line.startsWith("data:")) {
+                    continue;
+                }
+
+                const jsonText = line.substring(5).trim();
+
+                if (!jsonText) {
+                    continue;
+                }
+
+                try {
+
+                    const event = JSON.parse(jsonText);
+
+                    if (
+                        event.content &&
+                        event.content.parts
+                    ) {
+
+                        for (
+                            const part
+                            of event.content.parts
+                        ) {
+
+                            if (part.text) {
+
+                                finalText += part.text;
+
+                            }
+
+                        }
+
+                    }
+
+                } catch (error) {
+
+                    console.log(
+                        "Skipping SSE event:",
+                        jsonText
+                    );
+
+                }
+
+            }
+
+
+            if (!finalText.trim()) {
+
+                finalText =
+                    "The agent responded, but no text response was returned.";
+
+            }
+
+            assistantBubble.textContent =
+                finalText.trim();
+
+
+        } catch (error) {
+
+            console.error(error);
+
+            assistantBubble.textContent =
+                "❌ Sorry, I couldn't connect to HomeSync AI.\n\n" +
+                error.message;
+
+        }
+
+
+        sendButton.disabled = false;
+
+        input.focus();
+
+    }
+
+
+    sendButton.addEventListener(
+        "click",
+        sendMessage
+    );
+
+
+    input.addEventListener(
+        "keydown",
+        function(event) {
+
+            if (event.key === "Enter") {
+
+                sendMessage();
+
+            }
+
+        }
+    );
+
+</script>
+
+</body>
+</html>
