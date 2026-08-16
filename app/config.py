@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from dotenv import load_dotenv
 
 load_dotenv()
-os.environ.setdefault("GOOGLE_GENAI_USE_VERTEXAI", "False")  # Gemini API key only
+os.environ.setdefault("GOOGLE_GENAI_USE_VERTEXAI", "True")  # Gemini API key only
 
 @dataclass
 class AgentConfig:
